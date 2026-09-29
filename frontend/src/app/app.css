@@ -965,3 +965,127 @@
     text-align: center;
   }
 }
+
+.publish-panel {
+  width: min(820px, 100%);
+  max-height: 92dvh;
+  overflow-y: auto;
+}
+
+.publish-panel h2 {
+  margin: 0 56px 22px 0;
+}
+
+.publish-panel h3 {
+  margin: 24px 0 12px;
+  color: #000000;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.publish-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.publish-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #000000;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.publish-form-grid input,
+.publish-form-grid select,
+.publish-form-grid textarea {
+  width: 100%;
+  min-height: 46px;
+  border: 2px solid #000000;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.publish-form-grid textarea {
+  resize: vertical;
+}
+
+.publish-field-wide {
+  grid-column: 1 / -1;
+}
+
+.publish-form-message,
+.publish-form-error {
+  margin: 14px 0 0;
+  color: #000000;
+}
+
+.publish-form-error {
+  color: #a00000;
+  font-weight: 700;
+}
+
+.publish-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.publish-form-actions button {
+  min-height: 46px;
+  border: 2px solid #000000;
+  padding: 10px 16px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.publish-cancel {
+  background: #ffffff;
+  color: #000000;
+}
+
+.publish-submit {
+  background: #6fffe9;
+  color: #000000;
+}
+
+.publish-form-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+@media (max-width: 620px) {
+  .publish-panel {
+    width: 100%;
+    max-height: 92dvh;
+    border-width: 3px 0 0;
+    padding: 24px 18px 28px;
+  }
+
+  .publish-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publish-field-wide {
+    grid-column: auto;
+  }
+
+  .publish-form-actions {
+    flex-direction: column-reverse;
+  }
+}

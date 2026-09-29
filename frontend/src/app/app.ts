@@ -1,7 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ListingCardComponent, type ListingCardData } from './listing-card.component';
-import { ListingService, type ApiListingCard, type NewListing } from './listing.service';
+import {
+  ListingService,
+  type ApiListingCard,
+  type ListingCategory,
+  type ListingKind,
+  type NewListing,
+} from './listing.service';
 
 type TabMode = 'needs' | 'offers';
 
@@ -18,7 +26,7 @@ interface ClientProfile {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ListingCardComponent],
+  imports: [CommonModule, ReactiveFormsModule, ListingCardComponent],
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
@@ -37,6 +45,25 @@ export class App implements OnInit {
   isLoadingListings = true;
   hasListingsError = false;
   isPublishing = false;
+  isPublishFormOpen = false;
+  isLoadingCategories = false;
+  categories: ListingCategory[] = [];
+  categoryLoadError = false;
+  publishError: string | null = null;
+
+  private readonly formBuilder = inject(NonNullableFormBuilder);
+  readonly publishForm = this.formBuilder.group({
+    kind: this.formBuilder.control<ListingKind>('needs'),
+    title: ['', [Validators.required, Validators.maxLength(100)]],
+    summary: ['', [Validators.required, Validators.maxLength(4000)]],
+    location: ['', [Validators.required, Validators.maxLength(255)]],
+    categoryId: this.formBuilder.control(0, [Validators.required, Validators.min(1)]),
+    firstName: ['', [Validators.required, Validators.maxLength(50)]],
+    lastName: ['', [Validators.required, Validators.maxLength(100)]],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
+    price: this.formBuilder.control(0, [Validators.min(0)]),
+  });
 
   private readonly profileSummary: ClientProfile = {
     name: 'Jorge Prats',
@@ -302,30 +329,59 @@ export class App implements OnInit {
     this.showFilters = !this.showFilters;
   }
 
-  publishNewListing(): void {
+  get isOfferListing(): boolean {
+    return this.publishForm.controls.kind.value === 'offers';
+  }
+
+  openPublishForm(): void {
+    this.isPublishFormOpen = true;
+    this.publishError = null;
+    this.categoryLoadError = false;
+    this.isLoadingCategories = true;
+    this.listingService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories;
+        this.isLoadingCategories = false;
+      },
+      error: () => {
+        this.categoryLoadError = true;
+        this.isLoadingCategories = false;
+      },
+    });
+  }
+
+  closePublishForm(): void {
     if (this.isPublishing) {
       return;
     }
+    this.isPublishFormOpen = false;
+    this.publishError = null;
+  }
 
-    const source = this.apiListings.filter((listing) => listing.kind === this.activeTab);
-
-    if (!source.length) {
+  submitListing(): void {
+    this.publishForm.markAllAsTouched();
+    this.publishError = null;
+    if (this.publishForm.invalid || this.isPublishing) {
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * source.length);
-    const base = source[randomIndex];
+    const value = this.publishForm.getRawValue();
+    if (value.kind === 'offers' && value.price <= 0) {
+      this.publishForm.controls.price.setErrors({ min: true });
+      return;
+    }
 
     const newListing: NewListing = {
-      title: `${base.title} (copia)`,
-      category: base.kind === 'needs' ? 'Necesidades' : 'Profesionales',
-      summary: `${base.description} Nueva publicación generada a partir de una publicación existente.`,
-      location: base.location,
-      priority: base.priority === 'high' ? 'ALTA' : base.priority === 'medium' ? 'MEDIA' : 'BAJA',
-      price: Number.parseFloat(base.price.replace(/[^\d,.]/g, '').replace(',', '.')),
-      createdBy: 'Tú',
-      status: 'ABIERTO',
-      featured: false,
+      kind: value.kind,
+      title: value.title.trim(),
+      summary: value.summary.trim(),
+      location: value.location.trim(),
+      categoryId: value.categoryId,
+      firstName: value.firstName.trim(),
+      lastName: value.lastName.trim(),
+      email: value.email.trim(),
+      password: value.password,
+      price: value.kind === 'offers' ? value.price : null,
     };
 
     this.isPublishing = true;
@@ -334,12 +390,22 @@ export class App implements OnInit {
         this.apiListings = [createdListing, ...this.apiListings];
         this.searchTerm = '';
         this.selectedCategory = 'Todas';
+        this.activeTab = createdListing.kind;
         this.isPublishing = false;
-        this.showToast('Publicación enviada al backend');
+        this.isPublishFormOpen = false;
+        this.publishForm.reset({
+          kind: 'needs', title: '', summary: '', location: '', categoryId: 0,
+          firstName: '', lastName: '', email: '', password: '', price: 0,
+        });
+        this.showToast('Publicación guardada correctamente');
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.isPublishing = false;
-        this.showToast('No se pudo publicar. Comprueba la conexión.');
+        this.publishError = error.status === 401
+          ? 'El email o la contraseña no son correctos.'
+          : error.status === 409
+            ? 'Ya existe una cuenta con ese email.'
+            : 'No se pudo guardar la publicación. Inténtalo de nuevo.';
       },
     });
   }

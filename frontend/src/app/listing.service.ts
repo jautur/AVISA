@@ -6,21 +6,38 @@ import type { ListingCardData } from './listing-card.component';
 export type ListingKind = 'needs' | 'offers';
 
 export interface ApiListing {
-  id: number;
+  id: string;
+  kind: ListingKind;
   title: string;
   category: string;
   summary: string;
   location: string;
   priority: string;
-  price: number;
+  price: number | null;
   createdBy: string;
   status: string;
   featured: boolean;
 }
 
-export type NewListing = Omit<ApiListing, 'id'>;
+export interface ListingCategory {
+  id: number;
+  name: string;
+}
 
-export type ApiListingCard = ListingCardData & { id: number; kind: ListingKind };
+export interface NewListing {
+  kind: ListingKind;
+  title: string;
+  summary: string;
+  location: string;
+  categoryId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  price: number | null;
+}
+
+export type ApiListingCard = ListingCardData & { id: string; kind: ListingKind };
 
 const API_URL = 'https://avisa-n4cc.onrender.com/api';
 
@@ -34,6 +51,10 @@ export class ListingService {
       .pipe(map((listings) => listings.map((listing) => this.toCard(listing))));
   }
 
+  getCategories(): Observable<ListingCategory[]> {
+    return this.http.get<ListingCategory[]>(`${API_URL}/categories`);
+  }
+
   createListing(listing: NewListing): Observable<ApiListingCard> {
     return this.http
       .post<ApiListing>(`${API_URL}/listings`, listing)
@@ -41,16 +62,13 @@ export class ListingService {
   }
 
   private toCard(listing: ApiListing): ApiListingCard {
-    const category = listing.category.trim();
-    const normalizedCategory = category.toLocaleLowerCase();
-
     return {
       id: listing.id,
-      kind: normalizedCategory === 'profesionales' ? 'offers' : 'needs',
+      kind: listing.kind,
       title: listing.title,
       description: listing.summary,
-      category,
-      price: `${listing.price} \u20AC`,
+      category: listing.category,
+      price: listing.price === null ? 'A convenir' : `${listing.price} \u20AC`,
       location: listing.location,
       avatar: listing.createdBy.trim().charAt(0).toLocaleUpperCase() || '?',
       userName: listing.createdBy,

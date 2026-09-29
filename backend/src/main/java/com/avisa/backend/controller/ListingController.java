@@ -1,42 +1,44 @@
 package com.avisa.backend.controller;
 
-import com.avisa.backend.model.Listing;
-import org.springframework.web.bind.annotation.*;
+import com.avisa.backend.dto.ListingCreateRequest;
+import com.avisa.backend.dto.ListingResponse;
+import com.avisa.backend.service.ListingService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200", "https://jautur.github.io"})
 public class ListingController {
+    private final ListingService listingService;
 
-    private final AtomicLong nextId = new AtomicLong(4);
-    private final List<Listing> listings = new CopyOnWriteArrayList<>(List.of(
-            new Listing(1L, "Diseño de marca", "Necesidades", "Creación de identidad visual para un restaurante local.", "Barcelona", "ALTA", 950, "María", "ABIERTO", true),
-            new Listing(2L, "Fotografía de producto", "Profesionales", "Sesión de fotos premium para catálogo online.", "Madrid", "MEDIA", 420, "Luis", "PENDIENTE", true),
-            new Listing(3L, "SEO local", "Necesidades", "Optimización de buscadores para negocio con presencia local.", "Valencia", "BAJA", 310, "Ana", "ABIERTO", false),
-            new Listing(4L, "Desarrollo web", "Profesionales", "Landing page moderna y responsive para marca emergente.", "Sevilla", "ALTA", 1200, "Sergio", "ABIERTO", true)
-    ));
+    public ListingController(ListingService listingService) {
+        this.listingService = listingService;
+    }
 
     @GetMapping("/listings")
-    public List<Listing> getListings() {
-        return listings;
+    public List<ListingResponse> getListings() {
+        return listingService.findAll();
     }
 
     @GetMapping("/listings/{id}")
-    public Listing getListingById(@PathVariable Long id) {
-        return listings.stream()
-                .filter(listing -> listing.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Listing no encontrado: " + id));
+    public ListingResponse getListingById(@PathVariable String id) {
+        return listingService.findById(id);
     }
 
     @PostMapping("/listings")
-    public Listing createListing(@RequestBody Listing listing) {
-        listing.setId(nextId.incrementAndGet());
-        listings.add(listing);
-        return listing;
+    @ResponseStatus(HttpStatus.CREATED)
+    public ListingResponse createListing(@Valid @RequestBody ListingCreateRequest request) {
+        return listingService.create(request);
     }
 }
