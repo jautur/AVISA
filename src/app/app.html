@@ -53,9 +53,23 @@
             (input)="searchTerm = $any($event.target).value"
           />
         </div>
+
+        <button class="filter-button" type="button" (click)="toggleFilters()">Filtrar</button>
       </div>
 
-      <div class="filter-panel">
+      <div class="filter-panel" *ngIf="showFilters">
+        <div class="filter-categories" aria-label="Filtrar por categoría">
+          <button
+            *ngFor="let category of filterOptions"
+            type="button"
+            class="filter-option"
+            [class.active]="selectedCategory === category"
+            (click)="setCategory(category)"
+          >
+            {{ category }}
+          </button>
+        </div>
+
         <div class="filter-chips">
           <div class="filter-key">
             <span class="key-swatch swatch-turquoise"></span>
@@ -114,4 +128,6 @@
       </div>
     </article>
   </div>
+
+  <button class="floating-publish" type="button" (click)="publishNewListing()">+ Publicar</button>
 </main>
