@@ -6,11 +6,12 @@ services:
     plan: free
     branch: main
     docker:
-      dockerfilePath: ./Dockerfile
-    rootDir: frontend
+      dockerfilePath: ./backend/Dockerfile
+      dockerContext: ./backend
+    rootDir: backend
     buildFilter:
       paths:
-        - frontend/**
-      ignoredPaths:
-        - frontend/**/*.spec.ts
+        - backend/**
+        - render.yaml
+    healthCheckPath: /api/health
     autoDeploy: true
