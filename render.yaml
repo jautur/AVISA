@@ -1,13 +1,12 @@
 services:
   - type: web
     name: avisa
-    env: docker
+    runtime: docker
     region: frankfurt
     plan: free
     branch: main
-    docker:
-      dockerfilePath: ./Dockerfile
-      dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     buildFilter:
       paths:
         - backend/**
