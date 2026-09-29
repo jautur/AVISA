@@ -9,7 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"})
+@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200", "https://jautur.github.io"})
 public class HealthController {
 
     @GetMapping("/health")

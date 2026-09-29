@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ListingCardComponent, type ListingCardData } from './listing-card.component';
+import { ListingService, type ApiListingCard, type NewListing } from './listing.service';
 
 type TabMode = 'needs' | 'offers';
 
@@ -21,7 +22,7 @@ interface ClientProfile {
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
-export class App {
+export class App implements OnInit {
   activeTab: TabMode = 'needs';
   showFilters = false;
   searchTerm = '';
@@ -31,6 +32,11 @@ export class App {
   toastMessage: string | null = null;
 
   private toastTimer: number | null = null;
+  private readonly listingService = inject(ListingService);
+  apiListings: ApiListingCard[] = [];
+  isLoadingListings = true;
+  hasListingsError = false;
+  isPublishing = false;
 
   private readonly profileSummary: ClientProfile = {
     name: 'Jorge Prats',
@@ -224,8 +230,28 @@ export class App {
     },
   ];
 
+  ngOnInit(): void {
+    this.loadListings();
+  }
+
+  loadListings(): void {
+    this.isLoadingListings = true;
+    this.hasListingsError = false;
+
+    this.listingService.getListings().subscribe({
+      next: (listings) => {
+        this.apiListings = listings;
+        this.isLoadingListings = false;
+      },
+      error: () => {
+        this.hasListingsError = true;
+        this.isLoadingListings = false;
+      },
+    });
+  }
+
   get listings(): ListingCardData[] {
-    const source = this.activeTab === 'needs' ? this.needsListings : this.offersListings;
+    const source = this.apiListings.filter((listing) => listing.kind === this.activeTab);
 
     return source.filter((listing) => {
       const matchesSearch =
@@ -242,7 +268,10 @@ export class App {
   }
 
   get filterOptions(): string[] {
-    return this.availableFilterOptions;
+    const categories = this.apiListings
+      .filter((listing) => listing.kind === this.activeTab)
+      .map((listing) => listing.category);
+    return ['Todas', ...new Set(categories)];
   }
 
   get resultsSummary(): string {
@@ -274,7 +303,11 @@ export class App {
   }
 
   publishNewListing(): void {
-    const source = this.activeTab === 'needs' ? this.needsListings : this.offersListings;
+    if (this.isPublishing) {
+      return;
+    }
+
+    const source = this.apiListings.filter((listing) => listing.kind === this.activeTab);
 
     if (!source.length) {
       return;
@@ -283,20 +316,32 @@ export class App {
     const randomIndex = Math.floor(Math.random() * source.length);
     const base = source[randomIndex];
 
-    const cloned: ListingCardData = {
-      ...base,
+    const newListing: NewListing = {
       title: `${base.title} (copia)`,
-      status: 'Nuevo',
-      userName: 'Tú',
-      avatar: 'N',
-      price: base.price,
-      description: `${base.description} Nueva publicación generada a partir de una oferta existente.`,
+      category: base.kind === 'needs' ? 'Necesidades' : 'Profesionales',
+      summary: `${base.description} Nueva publicación generada a partir de una publicación existente.`,
+      location: base.location,
+      priority: base.priority === 'high' ? 'ALTA' : base.priority === 'medium' ? 'MEDIA' : 'BAJA',
+      price: Number.parseFloat(base.price.replace(/[^\d,.]/g, '').replace(',', '.')),
+      createdBy: 'Tú',
+      status: 'ABIERTO',
+      featured: false,
     };
 
-    source.unshift(cloned);
-    this.searchTerm = '';
-    this.selectedCategory = 'Todas';
-    this.showToast('Publicación creada correctamente');
+    this.isPublishing = true;
+    this.listingService.createListing(newListing).subscribe({
+      next: (createdListing) => {
+        this.apiListings = [createdListing, ...this.apiListings];
+        this.searchTerm = '';
+        this.selectedCategory = 'Todas';
+        this.isPublishing = false;
+        this.showToast('Publicación enviada al backend');
+      },
+      error: () => {
+        this.isPublishing = false;
+        this.showToast('No se pudo publicar. Comprueba la conexión.');
+      },
+    });
   }
 
   private showToast(message: string): void {

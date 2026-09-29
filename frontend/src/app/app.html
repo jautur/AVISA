@@ -96,7 +96,7 @@
     </div>
 
     <section class="listing-grid" aria-label="Listado de publicaciones">
-      <ng-container *ngIf="listings.length; else emptyState">
+      <ng-container *ngIf="!isLoadingListings && !hasListingsError && listings.length; else emptyState">
         <app-listing-card
           *ngFor="let listing of listings"
           [listing]="listing"
@@ -105,7 +105,15 @@
       </ng-container>
 
       <ng-template #emptyState>
-        <div class="empty-state">
+        <div class="empty-state" *ngIf="isLoadingListings">
+          <p>Cargando publicaciones…</p>
+        </div>
+        <div class="empty-state" *ngIf="!isLoadingListings && hasListingsError">
+          <h3>No se pudieron cargar las publicaciones</h3>
+          <p>Comprueba la conexión e inténtalo de nuevo.</p>
+          <button type="button" (click)="loadListings()">Reintentar</button>
+        </div>
+        <div class="empty-state" *ngIf="!isLoadingListings && !hasListingsError">
           <h3>No hay resultados</h3>
           <p>Cambia la categoría o limpia los filtros para ver más opciones.</p>
           <button type="button" (click)="clearFilters()">Ver todo</button>
@@ -216,6 +224,6 @@
     </article>
   </div>
 
-  <button class="floating-publish" type="button" (click)="publishNewListing()">+ Publicar</button>
+  <button class="floating-publish" type="button" [disabled]="isPublishing" (click)="publishNewListing()">+ Publicar</button>
   <div class="toast" *ngIf="toastMessage" aria-live="polite">{{ toastMessage }}</div>
 </main>
