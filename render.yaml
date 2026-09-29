@@ -6,9 +6,8 @@ services:
     plan: free
     branch: main
     docker:
-      dockerfilePath: ./backend/Dockerfile
+      dockerfilePath: ./Dockerfile
       dockerContext: ./backend
-    rootDir: backend
     buildFilter:
       paths:
         - backend/**
