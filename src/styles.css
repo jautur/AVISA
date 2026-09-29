@@ -1,9 +1,53 @@
+:root {
+  --black: #000000;
+  --white: #FFFFFF;
+  --turquesa: #24A19E;
+  --menta: #6FFFE9;
+  --amarillo: #F1FF00;
+  --bg: #000000;
+  --text: #FFFFFF;
+  --border: 2px solid #000000;
+  --shadow: 12px 12px 0 #24A19E;
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+  --radius: 0px;
+  --font-display: 'Arial Black', 'Impact', 'Segoe UI', sans-serif;
+  --font-body: 'Segoe UI', 'Arial', sans-serif;
+}
+
 html, body {
   margin: 0;
   min-height: 100%;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   min-height: 100vh;
+  letter-spacing: 0.02em;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+h1, h2, h3, h4, h5, h6, .brand-text, .name, .tab, .category-box span, .publish-box span, .logo-word {
+  font-family: var(--font-display);
+}
+
+p, span, input, button, .role, .description, .meta-item, .user-name {
+  font-family: var(--font-body);
 }

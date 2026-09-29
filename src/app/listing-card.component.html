@@ -1,0 +1,27 @@
+<article class="card priority-{{ listing.priority }}" aria-label="Publicación">
+  <div class="card-top">
+    <span class="category">{{ listing.category }}</span>
+    <span class="status">{{ listing.status }}</span>
+  </div>
+
+  <h3>{{ listing.title }}</h3>
+  <p class="description">{{ listing.description }}</p>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <span class="label">Precio</span>
+      <strong>{{ listing.price }}</strong>
+    </div>
+    <div class="meta-item">
+      <span class="label">Ubicación</span>
+      <strong>{{ listing.location }}</strong>
+    </div>
+  </div>
+
+  <div class="user-row">
+    <div class="avatar-mini" aria-label="Avatar del usuario">{{ listing.avatar }}</div>
+    <span class="user-name">{{ listing.userName }}</span>
+  </div>
+
+  <button type="button" (click)="view.emit(listing)">Ver más</button>
+</article>

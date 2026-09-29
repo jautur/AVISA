@@ -1,3 +1,117 @@
 <main class="container">
-  <h1>hola</h1>
+  <header class="topbar">
+    <div class="brand" aria-label="Logo AVISA">
+      <span class="brand-mark">A</span>
+      <span class="brand-text">AVISA</span>
+    </div>
+
+    <div class="profile-box" aria-label="Perfil del usuario">
+      <div class="avatar">
+        <span>J</span>
+      </div>
+      <div class="profile-copy">
+        <span class="profile-name">JORGE PRATS</span>
+        <span class="profile-role">CLIENTE / TÉCNICO</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="Contenido principal">
+    <div class="toolbar" aria-label="Navegación y búsqueda">
+      <div class="tabs" role="tablist" aria-label="Secciones principales">
+        <button
+          class="tab"
+          [class.active]="activeTab === 'needs'"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'needs'"
+          (click)="setTab('needs')"
+        >
+          Necesidades de clientes
+        </button>
+        <button
+          class="tab"
+          [class.active]="activeTab === 'offers'"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'offers'"
+          (click)="setTab('offers')"
+        >
+          Ofertas de profesionales
+        </button>
+      </div>
+
+      <div class="search-row" role="search">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input
+            class="search-input"
+            type="text"
+            aria-label="Buscar"
+            placeholder="¿Qué estás buscando?"
+            [value]="searchTerm"
+            (input)="searchTerm = $any($event.target).value"
+          />
+        </div>
+      </div>
+
+      <div class="filter-panel">
+        <div class="filter-chips">
+          <div class="filter-key">
+            <span class="key-swatch swatch-turquoise"></span>
+            <span>Urgente</span>
+          </div>
+          <div class="filter-key">
+            <span class="key-swatch swatch-yellow"></span>
+            <span>Importante</span>
+          </div>
+          <div class="filter-key">
+            <span class="key-swatch swatch-mint"></span>
+            <span>Normal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="listing-grid" aria-label="Listado de publicaciones">
+      <app-listing-card
+        *ngFor="let listing of listings"
+        [listing]="listing"
+        (view)="openListingDetail($event)"
+      ></app-listing-card>
+    </section>
+  </section>
+
+  <div class="detail-backdrop" *ngIf="expandedListing" (click)="closeListingDetail()">
+    <article class="detail-panel" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button class="detail-close" type="button" aria-label="Cerrar" (click)="closeListingDetail()">×</button>
+
+      <div class="detail-header">
+        <span class="detail-badge">{{ expandedListing.category }}</span>
+        <span class="detail-status">{{ expandedListing.status }}</span>
+      </div>
+
+      <h2>{{ expandedListing.title }}</h2>
+      <p class="detail-description">{{ expandedListing.description }}</p>
+
+      <div class="detail-meta">
+        <div class="meta-box">
+          <span>Precio</span>
+          <strong>{{ expandedListing.price }}</strong>
+        </div>
+        <div class="meta-box">
+          <span>Ubicación</span>
+          <strong>{{ expandedListing.location }}</strong>
+        </div>
+      </div>
+
+      <div class="detail-user">
+        <div class="detail-avatar">{{ expandedListing.avatar }}</div>
+        <div>
+          <strong>{{ expandedListing.userName }}</strong>
+          <small>{{ expandedListing.category }}</small>
+        </div>
+      </div>
+    </article>
+  </div>
 </main>
