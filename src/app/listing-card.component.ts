@@ -1,4 +1,11 @@
+import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+
+export interface ListingReview {
+  author: string;
+  score: number;
+  text: string;
+}
 
 export interface ListingCardData {
   title: string;
@@ -10,11 +17,15 @@ export interface ListingCardData {
   userName: string;
   status: string;
   priority: 'high' | 'medium' | 'low';
+  rating?: number;
+  reviewCount?: number;
+  reviews?: ListingReview[];
 }
 
 @Component({
   selector: 'app-listing-card',
   standalone: true,
+  imports: [CommonModule],
   templateUrl: './listing-card.component.html',
   styleUrl: './listing-card.component.css',
 })

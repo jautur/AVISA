@@ -5,7 +5,7 @@
       <span class="brand-text">AVISA</span>
     </div>
 
-    <div class="profile-box" aria-label="Perfil del usuario">
+    <button class="profile-box" type="button" aria-label="Abrir perfil del cliente" (click)="openProfilePanel()">
       <div class="avatar">
         <span>J</span>
       </div>
@@ -13,7 +13,7 @@
         <span class="profile-name">JORGE PRATS</span>
         <span class="profile-role">CLIENTE / TÉCNICO</span>
       </div>
-    </div>
+    </button>
   </header>
 
   <section class="hero" aria-label="Contenido principal">
@@ -102,7 +102,6 @@
 
       <div class="detail-header">
         <span class="detail-badge">{{ expandedListing.category }}</span>
-        <span class="detail-status">{{ expandedListing.status }}</span>
       </div>
 
       <h2>{{ expandedListing.title }}</h2>
@@ -124,6 +123,76 @@
         <div>
           <strong>{{ expandedListing.userName }}</strong>
           <small>{{ expandedListing.category }}</small>
+        </div>
+      </div>
+
+      <div class="detail-rating" *ngIf="expandedListing.rating">
+        <div class="rating-header">
+          <span>Valoración</span>
+          <strong>{{ expandedListing.rating }}★</strong>
+        </div>
+        <p>{{ expandedListing.reviewCount ?? 0 }} opiniones recibidas</p>
+        <div class="review-list" *ngIf="expandedListing.reviews?.length">
+          <article class="review-item" *ngFor="let review of expandedListing.reviews">
+            <div class="review-top">
+              <strong>{{ review.author }}</strong>
+              <span>{{ review.score }}★</span>
+            </div>
+            <p>{{ review.text }}</p>
+          </article>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="detail-backdrop" *ngIf="profilePanelOpen" (click)="closeProfilePanel()">
+    <article class="profile-panel" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button class="detail-close" type="button" aria-label="Cerrar perfil" (click)="closeProfilePanel()">×</button>
+
+      <div class="profile-panel-header">
+        <div class="profile-hero-avatar">J</div>
+        <div>
+          <h2>{{ clientProfile.name }}</h2>
+          <p>{{ clientProfile.role }} · {{ clientProfile.city }}</p>
+        </div>
+      </div>
+
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <span>Valoración</span>
+          <strong>{{ clientProfile.rating }}★</strong>
+        </div>
+        <div class="profile-stat">
+          <span>Servicios</span>
+          <strong>{{ clientProfile.servicesReceived.length + clientProfile.servicesProvided.length }}</strong>
+        </div>
+      </div>
+
+      <div class="profile-columns">
+        <div>
+          <h3>Servicios recibidos</h3>
+          <ul>
+            <li *ngFor="let item of clientProfile.servicesReceived">{{ item }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Servicios realizados</h3>
+          <ul>
+            <li *ngFor="let item of clientProfile.servicesProvided">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="profile-reviews">
+        <h3>Opiniones recientes</h3>
+        <div class="review-list" *ngIf="clientProfile.reviews.length">
+          <article class="review-item" *ngFor="let review of clientProfile.reviews">
+            <div class="review-top">
+              <strong>{{ review.author }}</strong>
+              <span>{{ review.score }}★</span>
+            </div>
+            <p>{{ review.text }}</p>
+          </article>
         </div>
       </div>
     </article>

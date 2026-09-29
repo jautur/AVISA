@@ -20,7 +20,12 @@
 
   <div class="user-row">
     <div class="avatar-mini" aria-label="Avatar del usuario">{{ listing.avatar }}</div>
-    <span class="user-name">{{ listing.userName }}</span>
+    <div class="user-meta">
+      <span class="user-name">{{ listing.userName }}</span>
+      <span class="user-rating" *ngIf="listing.rating">
+        {{ listing.rating }}★ · {{ listing.reviewCount ?? 0 }} opiniones
+      </span>
+    </div>
   </div>
 
   <button type="button" (click)="view.emit(listing)">Ver más</button>

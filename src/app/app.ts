@@ -4,6 +4,16 @@ import { ListingCardComponent, type ListingCardData } from './listing-card.compo
 
 type TabMode = 'needs' | 'offers';
 
+interface ClientProfile {
+  name: string;
+  role: string;
+  city: string;
+  servicesReceived: string[];
+  servicesProvided: string[];
+  rating: number;
+  reviews: Array<{ author: string; score: number; text: string }>;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -17,6 +27,21 @@ export class App {
   searchTerm = '';
   selectedCategory = 'Todas';
   expandedListing: ListingCardData | null = null;
+  profilePanelOpen = false;
+
+  private readonly profileSummary: ClientProfile = {
+    name: 'Jorge Prats',
+    role: 'Cliente activo',
+    city: 'Madrid',
+    servicesReceived: ['Reforma de cocina', 'Diseño web', 'Montaje de oficina'],
+    servicesProvided: ['Asesoría técnica', 'Instalación y montaje', 'Branding para pymes'],
+    rating: 4.9,
+    reviews: [
+      { author: 'Ana Ruiz', score: 5, text: 'Muy profesional y muy atento en cada detalle.' },
+      { author: 'Mario López', score: 5, text: 'Excelente coordinación y comunicación durante todo el proyecto.' },
+      { author: 'Laura M.', score: 4, text: 'Servicio rápido y muy bien resuelto.' },
+    ],
+  };
 
   private readonly availableFilterOptions = [
     'Todas',
@@ -39,6 +64,12 @@ export class App {
       userName: 'Ana Ruiz',
       status: 'Abierto',
       priority: 'high',
+      rating: 4.8,
+      reviewCount: 24,
+      reviews: [
+        { author: 'Jorge', score: 5, text: 'Gran trabajo, muy claro y profesional.' },
+        { author: 'Marina', score: 4, text: 'Buena comunicación y buen resultado final.' },
+      ],
     },
     {
       title: 'Reforma integral de cocina',
@@ -50,6 +81,12 @@ export class App {
       userName: 'Mario López',
       status: 'Pendiente',
       priority: 'medium',
+      rating: 4.6,
+      reviewCount: 18,
+      reviews: [
+        { author: 'Sara', score: 5, text: 'Muy puntual y bien organizado.' },
+        { author: 'Pablo', score: 4, text: 'Buen trato y buena ejecución.' },
+      ],
     },
     {
       title: 'Fotografía de producto para tienda',
@@ -61,6 +98,12 @@ export class App {
       userName: 'Sara Gómez',
       status: 'Activo',
       priority: 'low',
+      rating: 4.9,
+      reviewCount: 31,
+      reviews: [
+        { author: 'Lola', score: 5, text: 'Fotos muy limpias y de gran calidad.' },
+        { author: 'Jorge', score: 5, text: 'Me encantó el resultado final.' },
+      ],
     },
     {
       title: 'Busco clases de inglés para adultos',
@@ -108,6 +151,12 @@ export class App {
       userName: 'Daniel P.',
       status: 'Disponible',
       priority: 'high',
+      rating: 4.7,
+      reviewCount: 22,
+      reviews: [
+        { author: 'Ana', score: 5, text: 'Muy creativo y organizado en cada paso.' },
+        { author: 'Lucía', score: 4, text: 'Resultado claro y muy útil para la marca.' },
+      ],
     },
     {
       title: 'Reformas de baños y cocinas',
@@ -119,6 +168,12 @@ export class App {
       userName: 'Raúl F.',
       status: 'Activa',
       priority: 'medium',
+      rating: 4.8,
+      reviewCount: 27,
+      reviews: [
+        { author: 'Marta', score: 5, text: 'Acabados impecables y trato muy cercano.' },
+        { author: 'Sergio', score: 4, text: 'Cumple muy bien los plazos.' },
+      ],
     },
     {
       title: 'Sesiones de fotografía de producto',
@@ -226,6 +281,14 @@ export class App {
     this.selectedCategory = 'Todas';
   }
 
+  openProfilePanel(): void {
+    this.profilePanelOpen = true;
+  }
+
+  closeProfilePanel(): void {
+    this.profilePanelOpen = false;
+  }
+
   openListingDetail(listing: ListingCardData): void {
     this.expandedListing = { ...listing };
   }
@@ -236,5 +299,9 @@ export class App {
 
   viewMore(listing: ListingCardData): void {
     this.openListingDetail(listing);
+  }
+
+  get clientProfile(): ClientProfile {
+    return this.profileSummary;
   }
 }
