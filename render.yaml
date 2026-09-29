@@ -7,4 +7,10 @@ services:
     branch: main
     docker:
       dockerfilePath: ./Dockerfile
+    rootDir: frontend
+    buildFilter:
+      paths:
+        - frontend/**
+      ignoredPaths:
+        - frontend/**/*.spec.ts
     autoDeploy: true

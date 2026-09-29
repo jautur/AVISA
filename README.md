@@ -1,59 +1,42 @@
-# Avisa
+# AVISA
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.0.
+Repositorio organizado como monorepo: la interfaz Angular y la API Spring Boot viven en carpetas independientes. La configuración de Render permanece en la raíz para conservar el Blueprint del repositorio.
 
-## Development server
+## Estructura
 
-To start a local development server, run:
-
-```bash
-ng serve
+```text
+AVISA/
+├── frontend/          # Angular, recursos públicos y Dockerfile de Render
+├── backend/           # API Spring Boot (Maven)
+├── render.yaml        # Blueprint del servicio frontend existente
+└── README.md
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Frontend
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Desde `frontend/`:
 
 ```bash
-ng generate component component-name
+npm ci
+npm start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Para generar la compilación de producción: `npm run build`.
+
+El servicio Render definido en `render.yaml` mantiene el nombre `avisa` y construye `frontend/Dockerfile` con `frontend/` como raíz. Los cambios en `backend/` no disparan una compilación del frontend.
+
+## Backend
+
+Desde `backend/`:
 
 ```bash
-ng generate --help
+mvn spring-boot:run
 ```
 
-## Building
+La API escucha en el puerto `8080` por defecto. Render debe proporcionar el puerto mediante `PORT` cuando el backend se despliegue como servicio web; configura `server.port=${PORT:8080}` en `backend/src/main/resources/application.properties` si el servicio necesita escuchar el puerto asignado por Render.
 
-To build the project run:
+## Neon y despliegue
 
-```bash
-ng build
-```
+Neon es la base de datos PostgreSQL del proyecto y Render aloja los servicios de aplicación. Las credenciales y la URL de conexión se guardan como variables de entorno en el servicio backend de Render, nunca en el repositorio. La aplicación backend actual no contiene todavía un controlador PostgreSQL/JPA ni usa `DATABASE_URL`; añadir esa conexión requiere configurar el driver y la integración de persistencia de forma explícita.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+`render.yaml` declara el frontend Docker que ya estaba configurado. No declara un segundo servicio backend para evitar crear o modificar recursos de Render al sincronizar el Blueprint. Si el backend existente se gestiona desde el Dashboard de Render, conserva allí su configuración y añade `backend/` como raíz de servicio para aislar sus despliegues.
