@@ -1,0 +1,20 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #111827, #374151);
+}
+
+h1 {
+  margin: 0;
+  color: #f9fafb;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  font-family: Arial, Helvetica, sans-serif;
+}
