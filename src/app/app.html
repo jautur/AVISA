@@ -2,7 +2,10 @@
   <header class="topbar">
     <div class="brand" aria-label="Logo AVISA">
       <span class="brand-mark">A</span>
-      <span class="brand-text">AVISA</span>
+      <div class="brand-copy">
+        <span class="brand-text">AVISA</span>
+        <span class="brand-slogan">solució a vista de tots</span>
+      </div>
     </div>
 
     <button class="profile-box" type="button" aria-label="Abrir perfil del cliente" (click)="openProfilePanel()">
@@ -54,7 +57,7 @@
           />
         </div>
 
-        <button class="filter-button" type="button" (click)="toggleFilters()">Filtrar</button>
+        <button class="filter-button" type="button" [class.active]="showFilters" (click)="toggleFilters()">Filtrar</button>
       </div>
 
       <div class="filter-panel" *ngIf="showFilters">
@@ -85,14 +88,29 @@
           </div>
         </div>
       </div>
+
+      <div class="results-bar" *ngIf="searchTerm || selectedCategory !== 'Todas' || showFilters">
+        <span>{{ resultsSummary }}</span>
+        <button class="reset-button" type="button" (click)="clearFilters()">Limpiar</button>
+      </div>
     </div>
 
     <section class="listing-grid" aria-label="Listado de publicaciones">
-      <app-listing-card
-        *ngFor="let listing of listings"
-        [listing]="listing"
-        (view)="openListingDetail($event)"
-      ></app-listing-card>
+      <ng-container *ngIf="listings.length; else emptyState">
+        <app-listing-card
+          *ngFor="let listing of listings"
+          [listing]="listing"
+          (view)="openListingDetail($event)"
+        ></app-listing-card>
+      </ng-container>
+
+      <ng-template #emptyState>
+        <div class="empty-state">
+          <h3>No hay resultados</h3>
+          <p>Cambia la categoría o limpia los filtros para ver más opciones.</p>
+          <button type="button" (click)="clearFilters()">Ver todo</button>
+        </div>
+      </ng-template>
     </section>
   </section>
 
@@ -199,4 +217,5 @@
   </div>
 
   <button class="floating-publish" type="button" (click)="publishNewListing()">+ Publicar</button>
+  <div class="toast" *ngIf="toastMessage" aria-live="polite">{{ toastMessage }}</div>
 </main>

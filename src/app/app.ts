@@ -28,6 +28,9 @@ export class App {
   selectedCategory = 'Todas';
   expandedListing: ListingCardData | null = null;
   profilePanelOpen = false;
+  toastMessage: string | null = null;
+
+  private toastTimer: number | null = null;
 
   private readonly profileSummary: ClientProfile = {
     name: 'Jorge Prats',
@@ -242,6 +245,11 @@ export class App {
     return this.availableFilterOptions;
   }
 
+  get resultsSummary(): string {
+    const label = this.selectedCategory === 'Todas' ? 'todas las categorías' : this.selectedCategory;
+    return `${this.listings.length} resultados · ${label}`;
+  }
+
   setTab(tab: TabMode): void {
     this.activeTab = tab;
     this.selectedCategory = 'Todas';
@@ -250,6 +258,15 @@ export class App {
 
   setCategory(category: string): void {
     this.selectedCategory = category;
+    if (category !== 'Todas' && !this.showFilters) {
+      this.showFilters = true;
+    }
+  }
+
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedCategory = 'Todas';
+    this.showFilters = false;
   }
 
   toggleFilters(): void {
@@ -279,6 +296,18 @@ export class App {
     source.unshift(cloned);
     this.searchTerm = '';
     this.selectedCategory = 'Todas';
+    this.showToast('Publicación creada correctamente');
+  }
+
+  private showToast(message: string): void {
+    if (this.toastTimer) {
+      window.clearTimeout(this.toastTimer);
+    }
+
+    this.toastMessage = message;
+    this.toastTimer = window.setTimeout(() => {
+      this.toastMessage = null;
+    }, 2200);
   }
 
   openProfilePanel(): void {
