@@ -1,15 +1,15 @@
 # Etapa 1: construir la app
-FROM node:20-alpine AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
 
 # Etapa 2: servir la app con nginx
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 COPY --from=build /app/dist/avisa/browser/ /usr/share/nginx/html/
 
 EXPOSE 80
