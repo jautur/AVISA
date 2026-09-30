@@ -155,6 +155,31 @@
         </div>
       </div>
 
+      <section class="proposal-entry" *ngIf="expandedListing.kind === 'needs'">
+        <button class="publish-submit" type="button" *ngIf="canSubmitProposal(expandedListing)" (click)="openProposalForm()">
+          Enviar propuesta
+        </button>
+        <p class="publish-form-message" *ngIf="currentUser?.accountType === 'cliente'">
+          Para responder a una necesidad necesitas una cuenta profesional.
+        </p>
+        <p class="publish-form-error" *ngIf="proposalError && !showProposalForm">{{ proposalError }}</p>
+
+        <form class="proposal-form" *ngIf="showProposalForm" [formGroup]="proposalForm" (ngSubmit)="submitProposal()">
+          <h3>Tu propuesta</h3>
+          <label>Importe propuesto (€)
+            <input type="number" formControlName="amount" min="0.01" step="0.01" required />
+          </label>
+          <label>Mensaje para el cliente
+            <textarea formControlName="message" rows="4" maxlength="2000" required></textarea>
+          </label>
+          <p class="publish-form-error" *ngIf="proposalForm.touched && proposalForm.invalid">Indica un importe mayor que cero y un mensaje.</p>
+          <p class="publish-form-error" *ngIf="proposalError">{{ proposalError }}</p>
+          <button class="publish-submit" type="submit" [disabled]="isSendingProposal">
+            {{ isSendingProposal ? 'Enviando…' : 'Enviar propuesta' }}
+          </button>
+        </form>
+      </section>
+
       <div class="detail-rating" *ngIf="expandedListing.rating">
         <div class="rating-header">
           <span>Valoración</span>
@@ -220,12 +245,53 @@
               <button class="small-action" type="button" *ngIf="listing.status !== 'activo'" (click)="setListingStatus(listing, 'activo')">Reactivar</button>
             </ng-container>
             <ng-container *ngIf="listing.kind === 'needs'">
+              <button class="small-action" type="button" (click)="openListingProposals(listing)">
+                {{ proposalListOpenFor === listing.id.toString() ? 'Ocultar propuestas' : 'Ver propuestas' }}
+              </button>
               <button class="small-action" type="button" *ngIf="listing.status === 'pendiente'" (click)="setListingStatus(listing, 'en_proceso')">Iniciar</button>
               <button class="small-action" type="button" *ngIf="listing.status === 'en_proceso'" (click)="setListingStatus(listing, 'completado')">Completar</button>
               <button class="small-action" type="button" *ngIf="listing.status === 'pendiente' || listing.status === 'en_proceso'" (click)="setListingStatus(listing, 'cancelado')">Cancelar</button>
             </ng-container>
             <button class="small-action danger-action" type="button" (click)="deleteListing(listing)">Eliminar</button>
           </div>
+
+          <div class="proposal-list" *ngIf="proposalListOpenFor === listing.id.toString()">
+            <p class="publish-form-message" *ngIf="isLoadingProposalsFor === listing.id.toString()">Cargando propuestas…</p>
+            <p class="publish-form-error" *ngIf="proposalListError">{{ proposalListError }}</p>
+            <p *ngIf="!isLoadingProposalsFor && !proposalListError && !(proposalsByListing[listing.id.toString()] || []).length">
+              Aún no hay propuestas para esta necesidad.
+            </p>
+            <article class="proposal-card" *ngFor="let proposal of proposalsByListing[listing.id.toString()] || []">
+              <div class="managed-listing-heading">
+                <strong>{{ proposal.professionalName }}</strong>
+                <span class="status">{{ proposalStatusLabel(proposal.status) }}</span>
+              </div>
+              <strong>{{ proposal.amount }} €</strong>
+              <p>{{ proposal.message }}</p>
+              <div class="managed-listing-actions" *ngIf="proposal.status === 'pendiente' && listing.status === 'pendiente'">
+                <button class="small-action" type="button" (click)="reviewProposal(proposal, 'aceptada')">Aceptar</button>
+                <button class="small-action danger-action" type="button" (click)="reviewProposal(proposal, 'rechazada')">Rechazar</button>
+              </div>
+            </article>
+          </div>
+        </article>
+      </section>
+
+      <section class="my-proposals" *ngIf="currentUser?.accountType !== 'cliente'" aria-labelledby="my-proposals-title">
+        <div class="my-listings-heading">
+          <h3 id="my-proposals-title">Propuestas enviadas</h3>
+          <button class="small-action" type="button" (click)="loadMyProposals()" [disabled]="isLoadingMyProposals">Actualizar</button>
+        </div>
+        <p class="publish-form-message" *ngIf="isLoadingMyProposals">Cargando propuestas…</p>
+        <p class="publish-form-error" *ngIf="myProposalsError">{{ myProposalsError }}</p>
+        <p *ngIf="!isLoadingMyProposals && !myProposalsError && !myProposals.length">Aún no has enviado propuestas.</p>
+        <article class="proposal-card" *ngFor="let proposal of myProposals">
+          <div class="managed-listing-heading">
+            <h4>{{ proposal.listingTitle }}</h4>
+            <span class="status">{{ proposalStatusLabel(proposal.status) }}</span>
+          </div>
+          <strong>{{ proposal.amount }} €</strong>
+          <p>{{ proposal.message }}</p>
         </article>
       </section>
 

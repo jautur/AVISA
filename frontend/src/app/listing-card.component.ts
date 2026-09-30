@@ -8,6 +8,8 @@ export interface ListingReview {
 }
 
 export interface ListingCardData {
+  id?: string | number;
+  kind?: 'needs' | 'offers';
   title: string;
   description: string;
   category: string;

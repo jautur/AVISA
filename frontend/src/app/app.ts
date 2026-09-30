@@ -11,6 +11,7 @@ import {
   type ListingCategory,
   type ListingKind,
   type NewListing,
+  type Proposal,
   type UpdateListing,
 } from './listing.service';
 
@@ -66,6 +67,16 @@ export class App implements OnInit {
   isLoadingMyListings = false;
   myListingsError: string | null = null;
   listingActionError: string | null = null;
+  showProposalForm = false;
+  isSendingProposal = false;
+  proposalError: string | null = null;
+  myProposals: Proposal[] = [];
+  isLoadingMyProposals = false;
+  myProposalsError: string | null = null;
+  proposalsByListing: Record<string, Proposal[]> = {};
+  proposalListOpenFor: string | null = null;
+  isLoadingProposalsFor: string | null = null;
+  proposalListError: string | null = null;
 
   private readonly formBuilder = inject(NonNullableFormBuilder);
   readonly publishForm = this.formBuilder.group({
@@ -75,6 +86,11 @@ export class App implements OnInit {
     location: ['', [Validators.required, Validators.maxLength(255)]],
     categoryId: this.formBuilder.control(0, [Validators.required, Validators.min(1)]),
     price: this.formBuilder.control(0),
+  });
+
+  readonly proposalForm = this.formBuilder.group({
+    message: ['', [Validators.required, Validators.maxLength(2000)]],
+    amount: this.formBuilder.control(0, [Validators.required, Validators.min(0.01)]),
   });
 
   readonly loginForm = this.formBuilder.group({
@@ -517,6 +533,7 @@ export class App implements OnInit {
   openProfilePanel(): void {
     this.profilePanelOpen = true;
     this.loadMyListings();
+    this.loadMyProposals();
   }
 
   loadMyListings(): void {
@@ -533,6 +550,122 @@ export class App implements OnInit {
         this.isLoadingMyListings = false;
       },
     });
+  }
+
+  loadMyProposals(): void {
+    this.isLoadingMyProposals = true;
+    this.myProposalsError = null;
+    this.listingService.getMyProposals().subscribe({
+      next: (proposals) => {
+        this.myProposals = proposals;
+        this.isLoadingMyProposals = false;
+      },
+      error: () => {
+        this.myProposalsError = 'No se pudieron cargar tus propuestas.';
+        this.isLoadingMyProposals = false;
+      },
+    });
+  }
+
+  openListingProposals(listing: ApiListingCard): void {
+    if (this.proposalListOpenFor === listing.id.toString()) {
+      this.proposalListOpenFor = null;
+      return;
+    }
+    this.proposalListOpenFor = listing.id.toString();
+    this.isLoadingProposalsFor = listing.id.toString();
+    this.proposalListError = null;
+    this.listingService.getListingProposals(listing.id).subscribe({
+      next: (proposals) => {
+        this.proposalsByListing[listing.id.toString()] = proposals;
+        this.isLoadingProposalsFor = null;
+      },
+      error: () => {
+        this.proposalListError = 'No se pudieron cargar las propuestas para esta necesidad.';
+        this.isLoadingProposalsFor = null;
+      },
+    });
+  }
+
+  reviewProposal(proposal: Proposal, status: 'aceptada' | 'rechazada'): void {
+    this.proposalListError = null;
+    this.listingService.updateProposalStatus(proposal.id, status).subscribe({
+      next: () => {
+        this.loadMyListings();
+        this.loadListings();
+        this.proposalListOpenFor = proposal.listingId;
+        this.isLoadingProposalsFor = proposal.listingId;
+        this.listingService.getListingProposals(proposal.listingId).subscribe({
+          next: (proposals) => {
+            this.proposalsByListing[proposal.listingId] = proposals;
+            this.isLoadingProposalsFor = null;
+          },
+          error: () => {
+            this.proposalListError = 'No se pudieron actualizar las propuestas.';
+            this.isLoadingProposalsFor = null;
+          },
+        });
+        this.showToast(status === 'aceptada' ? 'Propuesta aceptada; el trabajo está en proceso' : 'Propuesta rechazada');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.proposalListError = error.status === 409
+          ? 'La necesidad ya no está disponible para revisar propuestas.'
+          : 'No se pudo actualizar la propuesta. Inténtalo de nuevo.';
+      },
+    });
+  }
+
+  canSubmitProposal(listing: ListingCardData): boolean {
+    if (listing.kind !== 'needs') return false;
+    if (!this.currentUser) return true;
+    const ownName = `${this.currentUser.firstName} ${this.currentUser.lastName}`.trim().toLocaleLowerCase();
+    return this.currentUser.accountType !== 'cliente'
+      && listing.userName.trim().toLocaleLowerCase() !== ownName;
+  }
+
+  openProposalForm(): void {
+    this.proposalError = null;
+    if (!this.currentUser) {
+      this.authMessage = 'Inicia sesión con una cuenta profesional para enviar una propuesta.';
+      this.openAuthPanel('login');
+      return;
+    }
+    if (this.currentUser.accountType === 'cliente') {
+      this.proposalError = 'Necesitas una cuenta profesional para enviar propuestas.';
+      return;
+    }
+    this.proposalForm.reset({ message: '', amount: 0 });
+    this.showProposalForm = true;
+  }
+
+  submitProposal(): void {
+    this.proposalForm.markAllAsTouched();
+    this.proposalError = null;
+    if (this.proposalForm.invalid || this.isSendingProposal || !this.expandedListing?.id) return;
+
+    const form = this.proposalForm.getRawValue();
+    this.isSendingProposal = true;
+    this.listingService.createProposal(this.expandedListing.id, form.message.trim(), form.amount).subscribe({
+      next: (proposal) => {
+        this.isSendingProposal = false;
+        this.showProposalForm = false;
+        this.proposalForm.reset({ message: '', amount: 0 });
+        this.myProposals = [proposal, ...this.myProposals];
+        this.showToast('Propuesta enviada');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isSendingProposal = false;
+        this.proposalError = error.status === 409
+          ? 'Ya enviaste una propuesta pendiente o esta necesidad ya no acepta respuestas.'
+          : error.status === 403
+            ? 'Solo las cuentas profesionales pueden enviar propuestas.'
+            : 'No se pudo enviar la propuesta. Inténtalo de nuevo.';
+      },
+    });
+  }
+
+  proposalStatusLabel(status: Proposal['status']): string {
+    return status === 'pendiente' ? 'Pendiente' : status === 'aceptada' ? 'Aceptada' : 'Rechazada';
   }
 
   setListingStatus(listing: ApiListingCard, status: ListingStatus): void {
@@ -676,10 +809,14 @@ export class App implements OnInit {
 
   openListingDetail(listing: ListingCardData): void {
     this.expandedListing = { ...listing };
+    this.proposalError = null;
+    this.showProposalForm = false;
   }
 
   closeListingDetail(): void {
     this.expandedListing = null;
+    this.showProposalForm = false;
+    this.proposalError = null;
   }
 
   viewMore(listing: ListingCardData): void {

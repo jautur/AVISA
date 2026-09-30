@@ -42,6 +42,16 @@ export interface UpdateListing {
   price: number | null;
 }
 
+export interface Proposal {
+  id: number;
+  listingId: string;
+  listingTitle: string;
+  professionalName: string;
+  amount: number;
+  message: string;
+  status: 'pendiente' | 'aceptada' | 'rechazada';
+}
+
 export type ListingStatus = 'pendiente' | 'en_proceso' | 'completado' | 'cancelado' | 'activo' | 'inactivo' | 'pausado';
 
 export type ApiListingCard = ListingCardData & {
@@ -91,6 +101,22 @@ export class ListingService {
 
   deleteListing(id: string | number): Observable<void> {
     return this.http.delete<void>(`${API_URL}/listings/${id}`);
+  }
+
+  createProposal(listingId: string | number, message: string, amount: number): Observable<Proposal> {
+    return this.http.post<Proposal>(`${API_URL}/listings/${listingId}/proposals`, { message, amount });
+  }
+
+  getListingProposals(listingId: string | number): Observable<Proposal[]> {
+    return this.http.get<Proposal[]>(`${API_URL}/listings/${listingId}/proposals`);
+  }
+
+  getMyProposals(): Observable<Proposal[]> {
+    return this.http.get<Proposal[]>(`${API_URL}/users/me/proposals`);
+  }
+
+  updateProposalStatus(id: number, status: 'aceptada' | 'rechazada'): Observable<Proposal> {
+    return this.http.patch<Proposal>(`${API_URL}/proposals/${id}/status`, { status });
   }
 
   private toCard(listing: ApiListing): ApiListingCard {
