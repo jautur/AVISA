@@ -44,6 +44,7 @@ export class App implements OnInit {
   apiListings: ApiListingCard[] = [];
   isLoadingListings = true;
   hasListingsError = false;
+  listingsErrorMessage = 'No se pudieron cargar las publicaciones.';
   isPublishing = false;
   isPublishFormOpen = false;
   isLoadingCategories = false;
@@ -61,8 +62,10 @@ export class App implements OnInit {
     firstName: ['', [Validators.required, Validators.maxLength(50)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+    phone: ['', [Validators.maxLength(20)]],
+    address: ['', [Validators.maxLength(255)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
-    price: this.formBuilder.control(0, [Validators.min(0)]),
+    price: this.formBuilder.control(0),
   });
 
   private readonly profileSummary: ClientProfile = {
@@ -270,8 +273,13 @@ export class App implements OnInit {
         this.apiListings = listings;
         this.isLoadingListings = false;
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.hasListingsError = true;
+        this.listingsErrorMessage = error.status === 0
+          ? 'No se pudo conectar con la API. Comprueba CORS y que Render esté activo.'
+          : error.status >= 500
+            ? 'La API no pudo consultar la base de datos. Revisa la conexión de Neon en Render.'
+            : 'La API rechazó la petición. Inténtalo de nuevo más tarde.';
         this.isLoadingListings = false;
       },
     });
@@ -333,6 +341,10 @@ export class App implements OnInit {
     return this.publishForm.controls.kind.value === 'offers';
   }
 
+  onListingKindChange(): void {
+    this.publishForm.controls.price.setErrors(null);
+  }
+
   openPublishForm(): void {
     this.isPublishFormOpen = true;
     this.publishError = null;
@@ -368,6 +380,7 @@ export class App implements OnInit {
     const value = this.publishForm.getRawValue();
     if (value.kind === 'offers' && value.price <= 0) {
       this.publishForm.controls.price.setErrors({ min: true });
+      this.publishForm.controls.price.markAsTouched();
       return;
     }
 
@@ -380,6 +393,8 @@ export class App implements OnInit {
       firstName: value.firstName.trim(),
       lastName: value.lastName.trim(),
       email: value.email.trim(),
+      phone: value.phone.trim(),
+      address: value.address.trim(),
       password: value.password,
       price: value.kind === 'offers' ? value.price : null,
     };
@@ -395,7 +410,7 @@ export class App implements OnInit {
         this.isPublishFormOpen = false;
         this.publishForm.reset({
           kind: 'needs', title: '', summary: '', location: '', categoryId: 0,
-          firstName: '', lastName: '', email: '', password: '', price: 0,
+          firstName: '', lastName: '', email: '', phone: '', address: '', password: '', price: 0,
         });
         this.showToast('Publicación guardada correctamente');
       },

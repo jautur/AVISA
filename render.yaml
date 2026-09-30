@@ -5,11 +5,12 @@ services:
     region: frankfurt
     plan: free
     branch: main
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: ./backend
     buildFilter:
       paths:
         - backend/**
+        - Dockerfile
         - render.yaml
     healthCheckPath: /api/health
     autoDeploy: true

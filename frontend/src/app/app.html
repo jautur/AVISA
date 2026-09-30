@@ -110,7 +110,7 @@
         </div>
         <div class="empty-state" *ngIf="!isLoadingListings && hasListingsError">
           <h3>No se pudieron cargar las publicaciones</h3>
-          <p>Comprueba la conexión e inténtalo de nuevo.</p>
+          <p>{{ listingsErrorMessage }}</p>
           <button type="button" (click)="loadListings()">Reintentar</button>
         </div>
         <div class="empty-state" *ngIf="!isLoadingListings && !hasListingsError">
@@ -232,7 +232,7 @@
       <div class="publish-form-grid">
         <label>
           Tipo de publicación
-          <select formControlName="kind">
+          <select formControlName="kind" (change)="onListingKindChange()">
             <option value="needs">Necesidad de cliente</option>
             <option value="offers">Oferta profesional</option>
           </select>
@@ -264,6 +264,9 @@
         <label *ngIf="isOfferListing">
           Precio (€)
           <input type="number" formControlName="price" min="0.01" step="0.01" required />
+          <small class="publish-form-error" *ngIf="publishForm.controls.price.touched && publishForm.controls.price.value <= 0">
+            Escribe un precio mayor que cero.
+          </small>
         </label>
       </div>
 
@@ -282,11 +285,21 @@
           <input type="email" formControlName="email" maxlength="100" autocomplete="email" required />
         </label>
         <label>
+          Teléfono (opcional)
+          <input type="tel" formControlName="phone" maxlength="20" autocomplete="tel" />
+        </label>
+        <label class="publish-field-wide">
+          Dirección de contacto (opcional)
+          <input type="text" formControlName="address" maxlength="255" autocomplete="street-address" />
+        </label>
+        <label>
           Contraseña
           <input type="password" formControlName="password" minlength="8" maxlength="72" autocomplete="new-password" required />
         </label>
       </div>
 
+      <p class="publish-form-message">La contraseña se guarda cifrada. Si ya tienes una cuenta, usa su contraseña para publicar.</p>
+      <p class="publish-form-error" *ngIf="publishForm.touched && publishForm.invalid">Completa los campos obligatorios y corrige los datos marcados.</p>
       <p class="publish-form-message" *ngIf="isLoadingCategories">Cargando categorías…</p>
       <p class="publish-form-error" *ngIf="categoryLoadError">No se pudieron cargar las categorías. Cierra el formulario e inténtalo de nuevo.</p>
       <p class="publish-form-error" *ngIf="publishError">{{ publishError }}</p>

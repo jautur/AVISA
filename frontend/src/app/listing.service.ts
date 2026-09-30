@@ -6,8 +6,8 @@ import type { ListingCardData } from './listing-card.component';
 export type ListingKind = 'needs' | 'offers';
 
 export interface ApiListing {
-  id: string;
-  kind: ListingKind;
+  id: string | number;
+  kind?: ListingKind;
   title: string;
   category: string;
   summary: string;
@@ -33,11 +33,13 @@ export interface NewListing {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
+  address: string;
   password: string;
   price: number | null;
 }
 
-export type ApiListingCard = ListingCardData & { id: string; kind: ListingKind };
+export type ApiListingCard = ListingCardData & { id: string | number; kind: ListingKind };
 
 const API_URL = 'https://avisa-n4cc.onrender.com/api';
 
@@ -62,9 +64,10 @@ export class ListingService {
   }
 
   private toCard(listing: ApiListing): ApiListingCard {
+    const kind = listing.kind ?? (listing.category.trim().toLocaleLowerCase() === 'profesionales' ? 'offers' : 'needs');
     return {
       id: listing.id,
-      kind: listing.kind,
+      kind,
       title: listing.title,
       description: listing.summary,
       category: listing.category,

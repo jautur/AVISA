@@ -41,6 +41,12 @@ public record ListingCreateRequest(
         @Size(max = 100)
         String email,
 
+        @Size(max = 20)
+        String phone,
+
+        @Size(max = 255)
+        String address,
+
         @NotBlank
         @Size(min = 8, max = 72)
         String password,

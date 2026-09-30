@@ -65,7 +65,7 @@ public class ListingService {
                     result.getString("summary"),
                     result.getString("location"),
                     result.getString("priority"),
-                    result.getObject("price", Double.class),
+                    result.getObject("price") == null ? null : result.getDouble("price"),
                     result.getString("created_by"),
                     result.getString("status"),
                     result.getBoolean("featured")
@@ -120,24 +120,44 @@ public class ListingService {
 
         Long userId;
         if (!existingUsers.isEmpty()) {
-            StoredUser existingUser = existingUsers.getFirst();
-            if (!passwordEncoder.matches(request.password(), existingUser.passwordHash())) {
+            StoredUser existingUser = existingUsers.get(0);
+            boolean passwordMatches;
+            try {
+                passwordMatches = passwordEncoder.matches(request.password(), existingUser.passwordHash());
+            } catch (IllegalArgumentException exception) {
+                passwordMatches = false;
+            }
+            if (!passwordMatches) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email o contraseña incorrectos");
             }
             userId = existingUser.id();
-            if (!existingUser.type().equals(userType) && !existingUser.type().equals("ambos")) {
-                jdbcTemplate.update("UPDATE usuarios SET tipo_usuario = 'ambos' WHERE id_usuario = ?", userId);
-            }
+            String nextUserType = existingUser.type().equals(userType) || existingUser.type().equals("ambos")
+                    ? existingUser.type()
+                    : "ambos";
+            jdbcTemplate.update("""
+                    UPDATE usuarios
+                    SET nombre = ?, apellidos = ?, telefono = ?, direccion = ?, tipo_usuario = ?
+                    WHERE id_usuario = ?
+                    """,
+                    request.firstName().trim(),
+                    request.lastName().trim(),
+                    blankToNull(request.phone()),
+                    blankToNull(request.address()),
+                    nextUserType,
+                    userId
+            );
         } else {
             userId = jdbcTemplate.queryForObject("""
-                    INSERT INTO usuarios (nombre, apellidos, email, password, tipo_usuario)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO usuarios (nombre, apellidos, email, password, telefono, direccion, tipo_usuario)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     RETURNING id_usuario
                     """, Long.class,
                     request.firstName().trim(),
                     request.lastName().trim(),
                     email,
                     passwordEncoder.encode(request.password()),
+                    blankToNull(request.phone()),
+                    blankToNull(request.address()),
                     userType
             );
         }
@@ -188,5 +208,9 @@ public class ListingService {
     }
 
     private record StoredUser(Long id, String passwordHash, String type) {
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
