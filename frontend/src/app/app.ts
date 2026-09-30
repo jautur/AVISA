@@ -3,6 +3,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ListingCardComponent, type ListingCardData } from './listing-card.component';
+import { AuthService, type AccountType, type LoginPayload, type RegisterPayload, type UserProfile } from './auth.service';
 import {
   ListingService,
   type ApiListingCard,
@@ -37,10 +38,17 @@ export class App implements OnInit {
   selectedCategory = 'Todas';
   expandedListing: ListingCardData | null = null;
   profilePanelOpen = false;
+  authPanelOpen = false;
+  authMode: 'login' | 'register' = 'login';
+  authError: string | null = null;
+  authMessage: string | null = null;
+  isAuthenticating = false;
+  currentUser: UserProfile | null = null;
   toastMessage: string | null = null;
 
   private toastTimer: number | null = null;
   private readonly listingService = inject(ListingService);
+  private readonly authService = inject(AuthService);
   apiListings: ApiListingCard[] = [];
   isLoadingListings = true;
   hasListingsError = false;
@@ -59,13 +67,22 @@ export class App implements OnInit {
     summary: ['', [Validators.required, Validators.maxLength(4000)]],
     location: ['', [Validators.required, Validators.maxLength(255)]],
     categoryId: this.formBuilder.control(0, [Validators.required, Validators.min(1)]),
+    price: this.formBuilder.control(0),
+  });
+
+  readonly loginForm = this.formBuilder.group({
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
+    password: ['', [Validators.required]],
+  });
+
+  readonly registerForm = this.formBuilder.group({
     firstName: ['', [Validators.required, Validators.maxLength(50)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]],
     phone: ['', [Validators.maxLength(20)]],
     address: ['', [Validators.maxLength(255)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
-    price: this.formBuilder.control(0),
+    accountType: this.formBuilder.control<AccountType>('cliente'),
   });
 
   private readonly profileSummary: ClientProfile = {
@@ -261,6 +278,7 @@ export class App implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.authService.restoreSession().subscribe((user) => this.currentUser = user);
     this.loadListings();
   }
 
@@ -346,6 +364,13 @@ export class App implements OnInit {
   }
 
   openPublishForm(): void {
+    if (!this.currentUser) {
+      this.publishAfterAuthentication = true;
+      this.authMessage = 'Inicia sesión o crea una cuenta para publicar.';
+      this.openAuthPanel('login');
+      return;
+    }
+
     this.isPublishFormOpen = true;
     this.publishError = null;
     this.categoryLoadError = false;
@@ -390,12 +415,6 @@ export class App implements OnInit {
       summary: value.summary.trim(),
       location: value.location.trim(),
       categoryId: value.categoryId,
-      firstName: value.firstName.trim(),
-      lastName: value.lastName.trim(),
-      email: value.email.trim(),
-      phone: value.phone.trim(),
-      address: value.address.trim(),
-      password: value.password,
       price: value.kind === 'offers' ? value.price : null,
     };
 
@@ -409,15 +428,19 @@ export class App implements OnInit {
         this.isPublishing = false;
         this.isPublishFormOpen = false;
         this.publishForm.reset({
-          kind: 'needs', title: '', summary: '', location: '', categoryId: 0,
-          firstName: '', lastName: '', email: '', phone: '', address: '', password: '', price: 0,
+          kind: 'needs', title: '', summary: '', location: '', categoryId: 0, price: 0,
         });
+        if (this.currentUser && this.currentUser.accountType !== 'ambos'
+          && ((createdListing.kind === 'offers' && this.currentUser.accountType === 'cliente')
+            || (createdListing.kind === 'needs' && this.currentUser.accountType === 'profesional'))) {
+          this.currentUser = { ...this.currentUser, accountType: 'ambos' };
+        }
         this.showToast('Publicación guardada correctamente');
       },
       error: (error: HttpErrorResponse) => {
         this.isPublishing = false;
         this.publishError = error.status === 401
-          ? 'El email o la contraseña no son correctos.'
+          ? 'Tu sesión ha caducado. Inicia sesión de nuevo para publicar.'
           : error.status === 409
             ? 'Ya existe una cuenta con ese email.'
             : 'No se pudo guardar la publicación. Inténtalo de nuevo.';
@@ -438,6 +461,93 @@ export class App implements OnInit {
 
   openProfilePanel(): void {
     this.profilePanelOpen = true;
+  }
+
+  openAuthPanel(mode: 'login' | 'register' = 'login'): void {
+    this.authMode = mode;
+    this.authError = null;
+    this.authPanelOpen = true;
+  }
+
+  closeAuthPanel(): void {
+    if (!this.isAuthenticating) {
+      this.authPanelOpen = false;
+      this.authError = null;
+      this.authMessage = null;
+      this.publishAfterAuthentication = false;
+    }
+  }
+
+  submitLogin(): void {
+    this.loginForm.markAllAsTouched();
+    if (this.loginForm.invalid || this.isAuthenticating) return;
+
+    const value = this.loginForm.getRawValue();
+    const payload: LoginPayload = { email: value.email.trim(), password: value.password };
+    this.isAuthenticating = true;
+    this.authError = null;
+    this.authService.login(payload).subscribe({
+      next: (session) => this.finishAuthentication(session.user),
+      error: (error: HttpErrorResponse) => this.failAuthentication(error),
+    });
+  }
+
+  submitRegistration(): void {
+    this.registerForm.markAllAsTouched();
+    if (this.registerForm.invalid || this.isAuthenticating) return;
+
+    const value = this.registerForm.getRawValue();
+    const payload: RegisterPayload = {
+      firstName: value.firstName.trim(),
+      lastName: value.lastName.trim(),
+      email: value.email.trim(),
+      phone: value.phone.trim(),
+      address: value.address.trim(),
+      password: value.password,
+      accountType: value.accountType,
+    };
+    this.isAuthenticating = true;
+    this.authError = null;
+    this.authService.register(payload).subscribe({
+      next: (session) => this.finishAuthentication(session.user),
+      error: (error: HttpErrorResponse) => this.failAuthentication(error),
+    });
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe(() => {
+      this.currentUser = null;
+      this.profilePanelOpen = false;
+      this.showToast('Has cerrado sesión');
+    });
+  }
+
+  private finishAuthentication(user: UserProfile): void {
+    this.currentUser = user;
+    this.isAuthenticating = false;
+    this.authPanelOpen = false;
+    this.authError = null;
+    this.authMessage = null;
+    this.loginForm.reset({ email: '', password: '' });
+    this.registerForm.reset({
+      firstName: '', lastName: '', email: '', phone: '', address: '', password: '', accountType: 'cliente',
+    });
+    this.showToast('Sesión iniciada');
+    if (this.publishAfterAuthentication) {
+      this.publishAfterAuthentication = false;
+      this.openPublishForm();
+    }
+  }
+
+  private publishAfterAuthentication = false;
+
+  private failAuthentication(error: HttpErrorResponse): void {
+    this.isAuthenticating = false;
+    this.authError = error.status === 409
+      ? 'Ya existe una cuenta con ese email. Inicia sesión.'
+      : error.status === 401
+        ? 'Email o contraseña incorrectos.'
+        : 'No se pudo conectar con el servicio de usuarios. Inténtalo de nuevo.';
   }
 
   closeProfilePanel(): void {

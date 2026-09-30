@@ -9,6 +9,6 @@ In the Render service **Environment** settings, add these secret variables befor
 
 Copy both values from Neon’s **Connect** dialog and keep them secret. The backend accepts the standard Neon `postgresql://` form and converts it to JDBC internally. It also accepts `jdbc:postgresql://` URLs.
 
-On its first start, Flyway applies `src/main/resources/db/migration/V1__create_avisa_tables.sql`. This creates the PostgreSQL versions of `usuarios`, `categorias`, `trabajos`, and `ofertas`, with their foreign keys and category seed rows. Keep the Neon database empty before the first migration; if the tables were created manually already, do not deploy until a Flyway baseline/migration plan is prepared.
+On its first start, Flyway applies the migrations in `src/main/resources/db/migration` in order. `V1` creates `usuarios`, `categorias`, `trabajos`, and `ofertas`, with their foreign keys and category seed rows. `V2` creates the table for revocable user sessions. Keep the Neon database empty before the first migration; if the tables were created manually already, do not deploy until a Flyway baseline/migration plan is prepared.
 
-The publication form creates or reuses a user by email, checks the password for existing accounts, hashes new passwords with BCrypt, and stores client requests in `trabajos` or professional offers in `ofertas`. User data and listings commit in one transaction.
+Registration hashes passwords with BCrypt. Login creates a random seven-day bearer session; only its SHA-256 hash is stored in `sesiones_usuario`. Authenticated users can publish to `trabajos` or `ofertas`, and the backend gets the owner ID from the session rather than trusting account fields in the browser request.

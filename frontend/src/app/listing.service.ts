@@ -30,12 +30,6 @@ export interface NewListing {
   summary: string;
   location: string;
   categoryId: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  password: string;
   price: number | null;
 }
 

@@ -8,14 +8,17 @@
       </div>
     </div>
 
-    <button class="profile-box" type="button" aria-label="Abrir perfil del cliente" (click)="openProfilePanel()">
+    <button *ngIf="currentUser" class="profile-box" type="button" aria-label="Abrir mi cuenta" (click)="openProfilePanel()">
       <div class="avatar">
-        <span>J</span>
+        <span>{{ (currentUser.firstName || '?').charAt(0).toUpperCase() }}</span>
       </div>
       <div class="profile-copy">
-        <span class="profile-name">JORGE PRATS</span>
-        <span class="profile-role">CLIENTE / TÉCNICO</span>
+        <span class="profile-name">{{ currentUser.firstName }} {{ currentUser.lastName }}</span>
+        <span class="profile-role">{{ currentUser.accountType }}</span>
       </div>
+    </button>
+    <button *ngIf="!currentUser" class="filter-button" type="button" (click)="openAuthPanel('login')">
+      Iniciar sesión
     </button>
   </header>
 
@@ -176,52 +179,84 @@
       <button class="detail-close" type="button" aria-label="Cerrar perfil" (click)="closeProfilePanel()">×</button>
 
       <div class="profile-panel-header">
-        <div class="profile-hero-avatar">J</div>
+        <div class="profile-hero-avatar">{{ (currentUser?.firstName || '?').charAt(0).toUpperCase() }}</div>
         <div>
-          <h2>{{ clientProfile.name }}</h2>
-          <p>{{ clientProfile.role }} · {{ clientProfile.city }}</p>
+          <h2>{{ currentUser?.firstName }} {{ currentUser?.lastName }}</h2>
+          <p>{{ currentUser?.accountType }}</p>
         </div>
       </div>
 
       <div class="profile-stats">
-        <div class="profile-stat">
-          <span>Valoración</span>
-          <strong>{{ clientProfile.rating }}★</strong>
-        </div>
-        <div class="profile-stat">
-          <span>Servicios</span>
-          <strong>{{ clientProfile.servicesReceived.length + clientProfile.servicesProvided.length }}</strong>
-        </div>
+        <div class="profile-stat"><span>Email</span><strong>{{ currentUser?.email }}</strong></div>
+        <div class="profile-stat"><span>Teléfono</span><strong>{{ currentUser?.phone || 'No indicado' }}</strong></div>
       </div>
 
-      <div class="profile-columns">
-        <div>
-          <h3>Servicios recibidos</h3>
-          <ul>
-            <li *ngFor="let item of clientProfile.servicesReceived">{{ item }}</li>
-          </ul>
-        </div>
-        <div>
-          <h3>Servicios realizados</h3>
-          <ul>
-            <li *ngFor="let item of clientProfile.servicesProvided">{{ item }}</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="profile-reviews">
-        <h3>Opiniones recientes</h3>
-        <div class="review-list" *ngIf="clientProfile.reviews.length">
-          <article class="review-item" *ngFor="let review of clientProfile.reviews">
-            <div class="review-top">
-              <strong>{{ review.author }}</strong>
-              <span>{{ review.score }}★</span>
-            </div>
-            <p>{{ review.text }}</p>
-          </article>
-        </div>
-      </div>
+      <p *ngIf="currentUser?.address">{{ currentUser?.address }}</p>
+      <div class="publish-form-actions"><button class="publish-submit" type="button" (click)="logout()">Cerrar sesión</button></div>
     </article>
+  </div>
+
+  <div class="detail-backdrop" *ngIf="authPanelOpen" (click)="closeAuthPanel()">
+    <section class="detail-panel publish-panel" role="dialog" aria-modal="true" aria-labelledby="auth-title" (click)="$event.stopPropagation()">
+      <button class="detail-close" type="button" aria-label="Cerrar acceso" (click)="closeAuthPanel()">×</button>
+      <h2 id="auth-title">{{ authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h2>
+      <p class="publish-form-message" *ngIf="authMessage">{{ authMessage }}</p>
+      <div class="tabs">
+        <button class="tab" type="button" [class.active]="authMode === 'login'" (click)="openAuthPanel('login')">Entrar</button>
+        <button class="tab" type="button" [class.active]="authMode === 'register'" (click)="openAuthPanel('register')">Crear cuenta</button>
+      </div>
+
+      <form *ngIf="authMode === 'login'" [formGroup]="loginForm" (ngSubmit)="submitLogin()">
+        <div class="publish-form-grid">
+          <label class="publish-field-wide">Email
+            <input type="email" formControlName="email" autocomplete="email" maxlength="100" required />
+          </label>
+          <label class="publish-field-wide">Contraseña
+            <input type="password" formControlName="password" autocomplete="current-password" required />
+          </label>
+        </div>
+        <p class="publish-form-error" *ngIf="loginForm.touched && loginForm.invalid">Introduce un email y una contraseña.</p>
+        <p class="publish-form-error" *ngIf="authError">{{ authError }}</p>
+        <div class="publish-form-actions"><button class="publish-submit" type="submit" [disabled]="isAuthenticating">
+          {{ isAuthenticating ? 'Entrando…' : 'Iniciar sesión' }}
+        </button></div>
+      </form>
+
+      <form *ngIf="authMode === 'register'" [formGroup]="registerForm" (ngSubmit)="submitRegistration()">
+        <div class="publish-form-grid">
+          <label>Nombre
+            <input type="text" formControlName="firstName" autocomplete="given-name" maxlength="50" required />
+          </label>
+          <label>Apellidos
+            <input type="text" formControlName="lastName" autocomplete="family-name" maxlength="100" required />
+          </label>
+          <label class="publish-field-wide">Email
+            <input type="email" formControlName="email" autocomplete="email" maxlength="100" required />
+          </label>
+          <label>Tipo de cuenta
+            <select formControlName="accountType">
+              <option value="cliente">Cliente</option>
+              <option value="profesional">Profesional</option>
+              <option value="ambos">Ambos</option>
+            </select>
+          </label>
+          <label>Teléfono (opcional)
+            <input type="tel" formControlName="phone" autocomplete="tel" maxlength="20" />
+          </label>
+          <label class="publish-field-wide">Dirección (opcional)
+            <input type="text" formControlName="address" autocomplete="street-address" maxlength="255" />
+          </label>
+          <label class="publish-field-wide">Contraseña (mínimo 8 caracteres)
+            <input type="password" formControlName="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+          </label>
+        </div>
+        <p class="publish-form-error" *ngIf="registerForm.touched && registerForm.invalid">Completa los campos obligatorios correctamente.</p>
+        <p class="publish-form-error" *ngIf="authError">{{ authError }}</p>
+        <div class="publish-form-actions"><button class="publish-submit" type="submit" [disabled]="isAuthenticating">
+          {{ isAuthenticating ? 'Creando cuenta…' : 'Crear cuenta' }}
+        </button></div>
+      </form>
+    </section>
   </div>
 
   <div class="detail-backdrop" *ngIf="isPublishFormOpen" (click)="closePublishForm()">
@@ -270,35 +305,6 @@
         </label>
       </div>
 
-      <h3>Tus datos</h3>
-      <div class="publish-form-grid">
-        <label>
-          Nombre
-          <input type="text" formControlName="firstName" maxlength="50" autocomplete="given-name" required />
-        </label>
-        <label>
-          Apellidos
-          <input type="text" formControlName="lastName" maxlength="100" autocomplete="family-name" required />
-        </label>
-        <label>
-          Email
-          <input type="email" formControlName="email" maxlength="100" autocomplete="email" required />
-        </label>
-        <label>
-          Teléfono (opcional)
-          <input type="tel" formControlName="phone" maxlength="20" autocomplete="tel" />
-        </label>
-        <label class="publish-field-wide">
-          Dirección de contacto (opcional)
-          <input type="text" formControlName="address" maxlength="255" autocomplete="street-address" />
-        </label>
-        <label>
-          Contraseña
-          <input type="password" formControlName="password" minlength="8" maxlength="72" autocomplete="new-password" required />
-        </label>
-      </div>
-
-      <p class="publish-form-message">La contraseña se guarda cifrada. Si ya tienes una cuenta, usa su contraseña para publicar.</p>
       <p class="publish-form-error" *ngIf="publishForm.touched && publishForm.invalid">Completa los campos obligatorios y corrige los datos marcados.</p>
       <p class="publish-form-message" *ngIf="isLoadingCategories">Cargando categorías…</p>
       <p class="publish-form-error" *ngIf="categoryLoadError">No se pudieron cargar las categorías. Cierra el formulario e inténtalo de nuevo.</p>

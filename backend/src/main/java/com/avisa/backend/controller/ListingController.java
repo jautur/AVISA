@@ -3,8 +3,10 @@ package com.avisa.backend.controller;
 import com.avisa.backend.dto.ListingCreateRequest;
 import com.avisa.backend.dto.ListingResponse;
 import com.avisa.backend.service.ListingService;
+import com.avisa.backend.auth.AuthenticatedUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,7 +40,8 @@ public class ListingController {
 
     @PostMapping("/listings")
     @ResponseStatus(HttpStatus.CREATED)
-    public ListingResponse createListing(@Valid @RequestBody ListingCreateRequest request) {
-        return listingService.create(request);
+    public ListingResponse createListing(@Valid @RequestBody ListingCreateRequest request,
+                                         @AuthenticationPrincipal AuthenticatedUser user) {
+        return listingService.create(request, user);
     }
 }

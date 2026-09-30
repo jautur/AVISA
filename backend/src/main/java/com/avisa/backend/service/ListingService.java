@@ -3,17 +3,16 @@ package com.avisa.backend.service;
 import com.avisa.backend.dto.CategoryResponse;
 import com.avisa.backend.dto.ListingCreateRequest;
 import com.avisa.backend.dto.ListingResponse;
+import com.avisa.backend.auth.AuthenticatedUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class ListingService {
@@ -72,7 +71,6 @@ public class ListingService {
             );
 
     private final JdbcTemplate jdbcTemplate;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public ListingService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -100,67 +98,15 @@ public class ListingService {
     }
 
     @Transactional
-    public ListingResponse create(ListingCreateRequest request) {
+    public ListingResponse create(ListingCreateRequest request, AuthenticatedUser user) {
         if (request.kind().equals("offers") && (request.price() == null || request.price() <= 0)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Indica un precio mayor que cero para la oferta");
         }
 
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
         String userType = request.kind().equals("offers") ? "profesional" : "cliente";
-
-        List<StoredUser> existingUsers = jdbcTemplate.query(
-                "SELECT id_usuario, password, tipo_usuario FROM usuarios WHERE lower(email) = ?",
-                (result, rowNumber) -> new StoredUser(
-                        result.getLong("id_usuario"),
-                        result.getString("password"),
-                        result.getString("tipo_usuario")
-                ),
-                email
-        );
-
-        Long userId;
-        if (!existingUsers.isEmpty()) {
-            StoredUser existingUser = existingUsers.get(0);
-            boolean passwordMatches;
-            try {
-                passwordMatches = passwordEncoder.matches(request.password(), existingUser.passwordHash());
-            } catch (IllegalArgumentException exception) {
-                passwordMatches = false;
-            }
-            if (!passwordMatches) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email o contraseña incorrectos");
-            }
-            userId = existingUser.id();
-            String nextUserType = existingUser.type().equals(userType) || existingUser.type().equals("ambos")
-                    ? existingUser.type()
-                    : "ambos";
-            jdbcTemplate.update("""
-                    UPDATE usuarios
-                    SET nombre = ?, apellidos = ?, telefono = ?, direccion = ?, tipo_usuario = ?
-                    WHERE id_usuario = ?
-                    """,
-                    request.firstName().trim(),
-                    request.lastName().trim(),
-                    blankToNull(request.phone()),
-                    blankToNull(request.address()),
-                    nextUserType,
-                    userId
-            );
-        } else {
-            userId = jdbcTemplate.queryForObject("""
-                    INSERT INTO usuarios (nombre, apellidos, email, password, telefono, direccion, tipo_usuario)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    RETURNING id_usuario
-                    """, Long.class,
-                    request.firstName().trim(),
-                    request.lastName().trim(),
-                    email,
-                    passwordEncoder.encode(request.password()),
-                    blankToNull(request.phone()),
-                    blankToNull(request.address()),
-                    userType
-            );
-        }
+        String currentType = user.accountType();
+        String nextUserType = currentType.equals(userType) || currentType.equals("ambos") ? currentType : "ambos";
+        jdbcTemplate.update("UPDATE usuarios SET tipo_usuario = ? WHERE id_usuario = ?", nextUserType, user.id());
 
         String categoryName;
         try {
@@ -179,7 +125,7 @@ public class ListingService {
                     VALUES (?, ?, ?, ?, ?, ?)
                     RETURNING id_oferta
                     """, Long.class,
-                    userId,
+                    user.id(),
                     request.categoryId(),
                     request.title().trim(),
                     request.summary().trim(),
@@ -188,7 +134,7 @@ public class ListingService {
             );
             return new ListingResponse("O-" + offerId, "offers", request.title().trim(), categoryName,
                     request.summary().trim(), request.location().trim(), "MEDIA", request.price(),
-                    request.firstName().trim() + " " + request.lastName().trim(), "activo", false);
+                    user.fullName(), "activo", false);
         }
 
         Long jobId = jdbcTemplate.queryForObject("""
@@ -196,7 +142,7 @@ public class ListingService {
                 VALUES (?, ?, ?, ?, ?)
                 RETURNING id_trabajo
                 """, Long.class,
-                userId,
+                user.id(),
                 request.categoryId(),
                 request.title().trim(),
                 request.summary().trim(),
@@ -204,13 +150,6 @@ public class ListingService {
         );
         return new ListingResponse("T-" + jobId, "needs", request.title().trim(), categoryName,
                 request.summary().trim(), request.location().trim(), "MEDIA", null,
-                request.firstName().trim() + " " + request.lastName().trim(), "pendiente", false);
-    }
-
-    private record StoredUser(Long id, String passwordHash, String type) {
-    }
-
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+                user.fullName(), "pendiente", false);
     }
 }
