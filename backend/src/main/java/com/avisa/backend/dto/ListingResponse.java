@@ -3,6 +3,7 @@ package com.avisa.backend.dto;
 public record ListingResponse(
         String id,
         String kind,
+        Long categoryId,
         String title,
         String category,
         String summary,

@@ -192,6 +192,43 @@
       </div>
 
       <p *ngIf="currentUser?.address">{{ currentUser?.address }}</p>
+
+      <section class="my-listings" aria-labelledby="my-listings-title">
+        <div class="my-listings-heading">
+          <h3 id="my-listings-title">Mis publicaciones</h3>
+          <button class="small-action" type="button" (click)="loadMyListings()" [disabled]="isLoadingMyListings">Actualizar</button>
+        </div>
+        <p class="publish-form-message" *ngIf="isLoadingMyListings">Cargando tus publicaciones…</p>
+        <div class="empty-state compact" *ngIf="!isLoadingMyListings && !myListingsError && !myListings.length">
+          <p>Aún no has publicado ningún anuncio.</p>
+        </div>
+        <p class="publish-form-error" *ngIf="myListingsError">{{ myListingsError }}</p>
+        <p class="publish-form-error" *ngIf="listingActionError">{{ listingActionError }}</p>
+
+        <article class="managed-listing" *ngFor="let listing of myListings">
+          <div class="managed-listing-heading">
+            <div>
+              <span class="detail-badge">{{ listing.kind === 'needs' ? 'Necesidad' : 'Oferta' }} · {{ listing.category }}</span>
+              <h4>{{ listing.title }}</h4>
+            </div>
+            <span class="status">{{ listingStatusLabel(listing.status) }}</span>
+          </div>
+          <div class="managed-listing-actions">
+            <button class="small-action" type="button" (click)="editListing(listing)">Editar</button>
+            <ng-container *ngIf="listing.kind === 'offers'">
+              <button class="small-action" type="button" *ngIf="listing.status === 'activo'" (click)="setListingStatus(listing, 'pausado')">Pausar</button>
+              <button class="small-action" type="button" *ngIf="listing.status !== 'activo'" (click)="setListingStatus(listing, 'activo')">Reactivar</button>
+            </ng-container>
+            <ng-container *ngIf="listing.kind === 'needs'">
+              <button class="small-action" type="button" *ngIf="listing.status === 'pendiente'" (click)="setListingStatus(listing, 'en_proceso')">Iniciar</button>
+              <button class="small-action" type="button" *ngIf="listing.status === 'en_proceso'" (click)="setListingStatus(listing, 'completado')">Completar</button>
+              <button class="small-action" type="button" *ngIf="listing.status === 'pendiente' || listing.status === 'en_proceso'" (click)="setListingStatus(listing, 'cancelado')">Cancelar</button>
+            </ng-container>
+            <button class="small-action danger-action" type="button" (click)="deleteListing(listing)">Eliminar</button>
+          </div>
+        </article>
+      </section>
+
       <div class="publish-form-actions"><button class="publish-submit" type="button" (click)="logout()">Cerrar sesión</button></div>
     </article>
   </div>
@@ -262,12 +299,12 @@
   <div class="detail-backdrop" *ngIf="isPublishFormOpen" (click)="closePublishForm()">
     <form class="detail-panel publish-panel" [formGroup]="publishForm" (ngSubmit)="submitListing()" (click)="$event.stopPropagation()">
       <button class="detail-close" type="button" aria-label="Cerrar formulario" (click)="closePublishForm()">&times;</button>
-      <h2>Publicar un anuncio</h2>
+      <h2>{{ editingListing ? 'Editar anuncio' : 'Publicar un anuncio' }}</h2>
 
       <div class="publish-form-grid">
         <label>
           Tipo de publicación
-          <select formControlName="kind" (change)="onListingKindChange()">
+          <select formControlName="kind" (change)="onListingKindChange()" [disabled]="!!editingListing">
             <option value="needs">Necesidad de cliente</option>
             <option value="offers">Oferta profesional</option>
           </select>

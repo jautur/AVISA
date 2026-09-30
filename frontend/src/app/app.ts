@@ -7,9 +7,11 @@ import { AuthService, type AccountType, type LoginPayload, type RegisterPayload,
 import {
   ListingService,
   type ApiListingCard,
+  type ListingStatus,
   type ListingCategory,
   type ListingKind,
   type NewListing,
+  type UpdateListing,
 } from './listing.service';
 
 type TabMode = 'needs' | 'offers';
@@ -59,6 +61,11 @@ export class App implements OnInit {
   categories: ListingCategory[] = [];
   categoryLoadError = false;
   publishError: string | null = null;
+  editingListing: ApiListingCard | null = null;
+  myListings: ApiListingCard[] = [];
+  isLoadingMyListings = false;
+  myListingsError: string | null = null;
+  listingActionError: string | null = null;
 
   private readonly formBuilder = inject(NonNullableFormBuilder);
   readonly publishForm = this.formBuilder.group({
@@ -304,7 +311,8 @@ export class App implements OnInit {
   }
 
   get listings(): ListingCardData[] {
-    const source = this.apiListings.filter((listing) => listing.kind === this.activeTab);
+    const source = this.apiListings.filter((listing) => listing.kind === this.activeTab
+      && this.isPublicListing(listing));
 
     return source.filter((listing) => {
       const matchesSearch =
@@ -372,6 +380,35 @@ export class App implements OnInit {
     }
 
     this.isPublishFormOpen = true;
+    this.editingListing = null;
+    this.publishForm.reset({ kind: 'needs', title: '', summary: '', location: '', categoryId: 0, price: 0 });
+    this.publishError = null;
+    this.categoryLoadError = false;
+    this.isLoadingCategories = true;
+    this.listingService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories;
+        this.isLoadingCategories = false;
+      },
+      error: () => {
+        this.categoryLoadError = true;
+        this.isLoadingCategories = false;
+      },
+    });
+  }
+
+  editListing(listing: ApiListingCard): void {
+    this.profilePanelOpen = false;
+    this.editingListing = listing;
+    this.publishForm.reset({
+      kind: listing.kind,
+      title: listing.title,
+      summary: listing.description,
+      location: listing.location,
+      categoryId: listing.categoryId,
+      price: listing.priceValue ?? 0,
+    });
+    this.isPublishFormOpen = true;
     this.publishError = null;
     this.categoryLoadError = false;
     this.isLoadingCategories = true;
@@ -392,6 +429,7 @@ export class App implements OnInit {
       return;
     }
     this.isPublishFormOpen = false;
+    this.editingListing = null;
     this.publishError = null;
   }
 
@@ -409,7 +447,7 @@ export class App implements OnInit {
       return;
     }
 
-    const newListing: NewListing = {
+    const valueToSave: NewListing = {
       kind: value.kind,
       title: value.title.trim(),
       summary: value.summary.trim(),
@@ -417,25 +455,42 @@ export class App implements OnInit {
       categoryId: value.categoryId,
       price: value.kind === 'offers' ? value.price : null,
     };
+    const updatePayload: UpdateListing = {
+      title: valueToSave.title,
+      summary: valueToSave.summary,
+      location: valueToSave.location,
+      categoryId: valueToSave.categoryId,
+      price: valueToSave.price,
+    };
 
     this.isPublishing = true;
-    this.listingService.createListing(newListing).subscribe({
-      next: (createdListing) => {
-        this.apiListings = [createdListing, ...this.apiListings];
+    const listingBeingEdited = this.editingListing;
+    const saveRequest = listingBeingEdited
+      ? this.listingService.updateListing(listingBeingEdited.id, updatePayload)
+      : this.listingService.createListing(valueToSave);
+    saveRequest.subscribe({
+      next: (savedListing) => {
+        if (listingBeingEdited) {
+          this.replaceListing(savedListing);
+        } else {
+          this.apiListings = [savedListing, ...this.apiListings];
+          this.myListings = [savedListing, ...this.myListings];
+        }
         this.searchTerm = '';
         this.selectedCategory = 'Todas';
-        this.activeTab = createdListing.kind;
+        this.activeTab = savedListing.kind;
         this.isPublishing = false;
         this.isPublishFormOpen = false;
+        this.editingListing = null;
         this.publishForm.reset({
           kind: 'needs', title: '', summary: '', location: '', categoryId: 0, price: 0,
         });
-        if (this.currentUser && this.currentUser.accountType !== 'ambos'
-          && ((createdListing.kind === 'offers' && this.currentUser.accountType === 'cliente')
-            || (createdListing.kind === 'needs' && this.currentUser.accountType === 'profesional'))) {
+        if (!listingBeingEdited && this.currentUser && this.currentUser.accountType !== 'ambos'
+          && ((savedListing.kind === 'offers' && this.currentUser.accountType === 'cliente')
+            || (savedListing.kind === 'needs' && this.currentUser.accountType === 'profesional'))) {
           this.currentUser = { ...this.currentUser, accountType: 'ambos' };
         }
-        this.showToast('Publicación guardada correctamente');
+        this.showToast(listingBeingEdited ? 'Publicación actualizada' : 'Publicación guardada correctamente');
       },
       error: (error: HttpErrorResponse) => {
         this.isPublishing = false;
@@ -461,6 +516,71 @@ export class App implements OnInit {
 
   openProfilePanel(): void {
     this.profilePanelOpen = true;
+    this.loadMyListings();
+  }
+
+  loadMyListings(): void {
+    this.isLoadingMyListings = true;
+    this.myListingsError = null;
+    this.listingActionError = null;
+    this.listingService.getMyListings().subscribe({
+      next: (listings) => {
+        this.myListings = listings;
+        this.isLoadingMyListings = false;
+      },
+      error: () => {
+        this.myListingsError = 'No se pudieron cargar tus publicaciones. Vuelve a intentarlo.';
+        this.isLoadingMyListings = false;
+      },
+    });
+  }
+
+  setListingStatus(listing: ApiListingCard, status: ListingStatus): void {
+    this.listingActionError = null;
+    this.listingService.updateStatus(listing.id, status).subscribe({
+      next: (updated) => {
+        this.replaceListing(updated);
+        this.showToast('Estado de la publicación actualizado');
+      },
+      error: () => this.listingActionError = 'No se pudo cambiar el estado. Actualiza la lista e inténtalo de nuevo.',
+    });
+  }
+
+  deleteListing(listing: ApiListingCard): void {
+    if (!window.confirm(`¿Quieres eliminar «${listing.title}»? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    this.listingActionError = null;
+    this.listingService.deleteListing(listing.id).subscribe({
+      next: () => {
+        this.myListings = this.myListings.filter((item) => item.id !== listing.id);
+        this.apiListings = this.apiListings.filter((item) => item.id !== listing.id);
+        this.showToast('Publicación eliminada');
+      },
+      error: () => this.listingActionError = 'No se pudo eliminar la publicación. Inténtalo de nuevo.',
+    });
+  }
+
+  listingStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      pendiente: 'Pendiente', en_proceso: 'En proceso', completado: 'Completado', cancelado: 'Cancelado',
+      activo: 'Activo', pausado: 'Pausado', inactivo: 'Inactivo',
+    };
+    return labels[status] ?? status;
+  }
+
+  private replaceListing(updated: ApiListingCard): void {
+    const alreadyInPublicFeed = this.apiListings.some((item) => item.id === updated.id);
+    this.apiListings = alreadyInPublicFeed
+      ? this.apiListings.map((item) => item.id === updated.id ? updated : item)
+      : this.isPublicListing(updated) ? [updated, ...this.apiListings] : this.apiListings;
+    this.myListings = this.myListings.map((item) => item.id === updated.id ? updated : item);
+  }
+
+  private isPublicListing(listing: ApiListingCard): boolean {
+    return listing.kind === 'offers'
+      ? listing.status === 'activo'
+      : listing.status === 'pendiente' || listing.status === 'en_proceso';
   }
 
   openAuthPanel(mode: 'login' | 'register' = 'login'): void {

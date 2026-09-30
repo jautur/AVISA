@@ -8,6 +8,7 @@ export type ListingKind = 'needs' | 'offers';
 export interface ApiListing {
   id: string | number;
   kind?: ListingKind;
+  categoryId: number;
   title: string;
   category: string;
   summary: string;
@@ -33,7 +34,22 @@ export interface NewListing {
   price: number | null;
 }
 
-export type ApiListingCard = ListingCardData & { id: string | number; kind: ListingKind };
+export interface UpdateListing {
+  title: string;
+  summary: string;
+  location: string;
+  categoryId: number;
+  price: number | null;
+}
+
+export type ListingStatus = 'pendiente' | 'en_proceso' | 'completado' | 'cancelado' | 'activo' | 'inactivo' | 'pausado';
+
+export type ApiListingCard = ListingCardData & {
+  id: string | number;
+  kind: ListingKind;
+  categoryId: number;
+  priceValue: number | null;
+};
 
 const API_URL = 'https://avisa-n4cc.onrender.com/api';
 
@@ -47,6 +63,12 @@ export class ListingService {
       .pipe(map((listings) => listings.map((listing) => this.toCard(listing))));
   }
 
+  getMyListings(): Observable<ApiListingCard[]> {
+    return this.http
+      .get<ApiListing[]>(`${API_URL}/users/me/listings`)
+      .pipe(map((listings) => listings.map((listing) => this.toCard(listing))));
+  }
+
   getCategories(): Observable<ListingCategory[]> {
     return this.http.get<ListingCategory[]>(`${API_URL}/categories`);
   }
@@ -57,11 +79,27 @@ export class ListingService {
       .pipe(map((createdListing) => this.toCard(createdListing)));
   }
 
+  updateListing(id: string | number, listing: UpdateListing): Observable<ApiListingCard> {
+    return this.http.put<ApiListing>(`${API_URL}/listings/${id}`, listing)
+      .pipe(map((updatedListing) => this.toCard(updatedListing)));
+  }
+
+  updateStatus(id: string | number, status: ListingStatus): Observable<ApiListingCard> {
+    return this.http.patch<ApiListing>(`${API_URL}/listings/${id}/status`, { status })
+      .pipe(map((updatedListing) => this.toCard(updatedListing)));
+  }
+
+  deleteListing(id: string | number): Observable<void> {
+    return this.http.delete<void>(`${API_URL}/listings/${id}`);
+  }
+
   private toCard(listing: ApiListing): ApiListingCard {
     const kind = listing.kind ?? (listing.category.trim().toLocaleLowerCase() === 'profesionales' ? 'offers' : 'needs');
     return {
       id: listing.id,
       kind,
+      categoryId: listing.categoryId,
+      priceValue: listing.price,
       title: listing.title,
       description: listing.summary,
       category: listing.category,

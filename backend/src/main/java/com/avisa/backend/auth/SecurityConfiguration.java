@@ -33,7 +33,7 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(ALLOWED_ORIGINS);
-        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(false);
 
@@ -58,8 +58,12 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health", "/api/categories", "/api/listings/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/me/listings").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout", "/api/listings").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/listings/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/listings/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/listings/**").authenticated()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(sessionFilter, UsernamePasswordAuthenticationFilter.class)
